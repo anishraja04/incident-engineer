@@ -62,6 +62,16 @@ def copy_repo(case_dir: Path, workdir: Path) -> Path:
     ws = workdir / case_dir.name
     _force_rmtree(ws)
     shutil.copytree(case_dir / "repo", ws, copy_function=shutil.copy)
+    # init a fresh git repo in the workspace so the verifier can diff
+    subprocess.run(["git", "init", "-q"], cwd=ws, capture_output=True)
+    subprocess.run(
+        ["git", "-c", "user.email=agent@local", "-c", "user.name=agent",
+         "add", "-A"], cwd=ws, capture_output=True,
+    )
+    subprocess.run(
+        ["git", "-c", "user.email=agent@local", "-c", "user.name=agent",
+         "commit", "-qm", "baseline"], cwd=ws, capture_output=True,
+    )
     return ws
 
 
