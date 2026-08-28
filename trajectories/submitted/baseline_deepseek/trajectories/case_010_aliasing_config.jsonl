@@ -1,0 +1,1 @@
+{"role": "assistant", "content": "--- a/config/loader.py\n+++ b/config/loader.py\n@@ -17,7 +17,7 @@\n \n \n def load_config(service_name: str) -> dict:\n     \"\"\"Return a service-specific copy of the shared defaults.\"\"\"\n-    cfg = copy.copy(_DEFAULTS)\n+    cfg = copy.deepcopy(_DEFAULTS)\n     cfg[\"service\"] = service_name\n     return cfg", "tool": "baseline_attempt_1"}

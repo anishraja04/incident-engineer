@@ -1,0 +1,1 @@
+{"role": "assistant", "content": "--- a/flags/service.py\n+++ b/flags/service.py\n@@ -10,4 +10,5 @@ def get_flag(name, store):\n \n \n def set_flag(name, value, store):\n     store[name] = value\n+    _cache[name] = value", "tool": "baseline_attempt_1"}

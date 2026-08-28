@@ -1,0 +1,1 @@
+{"role": "assistant", "content": "--- a/tax/calc.py\n+++ b/tax/calc.py\n@@ -7,4 +7,4 @@\n \n \n def compute_tax_cents(amount_cents: int, rate_percent: float) -> int:\n-    return round(amount_cents * rate_percent / 100)\n+    return int(amount_cents * rate_percent / 100 + 0.5)", "tool": "baseline_attempt_1"}

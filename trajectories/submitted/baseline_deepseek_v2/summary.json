@@ -1,0 +1,218 @@
+{
+  "solver": "baseline",
+  "model": "deepseek-chat",
+  "fix_rate": "0/11",
+  "total_cost_usd": 0.0573,
+  "total_wall_s": 84.9,
+  "results": [
+    {
+      "case": "case_001_timezone_payments",
+      "case_id": "case_001",
+      "title": "Recurring payment scheduler crashes with TypeError on worker ticks",
+      "solver": "baseline",
+      "model": "deepseek-chat",
+      "passed": false,
+      "reasons": [
+        "pytest failed (exit 1)"
+      ],
+      "steps": 2,
+      "fix_attempts": 1,
+      "input_tokens": 18440,
+      "output_tokens": 384,
+      "cache_tokens": 6016,
+      "cost_usd": 0.0056,
+      "elapsed_s": 6.9,
+      "pytest_tail": "y::test_advance_keeps_next_run_in_utc\ntests/test_worker_loop.py::test_recurring_payments_charged_on_schedule\n  <string>:8: DeprecationWarning: datetime.datetime.utcnow() is deprecated and scheduled for removal in a future version. Use timezone-aware objects to represent datetimes in UTC: datetime.datetime.now(datetime.UTC).\n\n-- Docs: https://docs.pytest.org/en/stable/how-to/capture-warnings.html\n=========================== short test summary info ===========================\nFAILED tests/test_scheduler.py::test_due_when_no_explicit_now - NameError: na...\n1 failed, 4 passed, 5 warnings in 0.07s\n"
+    },
+    {
+      "case": "case_002_mutable_default_aggregation",
+      "case_id": "case_002",
+      "title": "Sales aggregation reports inflated totals across requests",
+      "solver": "baseline",
+      "model": "deepseek-chat",
+      "passed": false,
+      "reasons": [
+        "pytest failed (exit 1)"
+      ],
+      "steps": 2,
+      "fix_attempts": 1,
+      "input_tokens": 16644,
+      "output_tokens": 451,
+      "cache_tokens": 5376,
+      "cost_usd": 0.0051,
+      "elapsed_s": 5.7,
+      "pytest_tail": ":26: in test_empty_batch_returns_empty\n    assert aggregate_sales([]) == {}\nE   AssertionError: assert {'pen': 14, '...: 7, 'mug': 9} == {}\nE     \nE     Left contains 3 more items:\nE     {'mug': 9, 'notebook': 7, 'pen': 14}\nE     Use -v to get more diff\n=========================== short test summary info ===========================\nFAILED tests/test_aggregator.py::test_each_call_is_stateless - AssertionError...\nFAILED tests/test_aggregator.py::test_same_product_across_requests_isolated\nFAILED tests/test_aggregator.py::test_empty_batch_returns_empty - AssertionEr...\n3 failed, 1 passed in 0.07s\n"
+    },
+    {
+      "case": "case_003_dead_letter_swallow",
+      "case_id": "case_003",
+      "title": "Order messages silently disappear from the queue",
+      "solver": "baseline",
+      "model": "deepseek-chat",
+      "passed": false,
+      "reasons": [
+        "pytest failed (exit 1)"
+      ],
+      "steps": 2,
+      "fix_attempts": 1,
+      "input_tokens": 10316,
+      "output_tokens": 1459,
+      "cache_tokens": 3456,
+      "cost_usd": 0.0045,
+      "elapsed_s": 11.4,
+      "pytest_tail": "                                     [100%]\n================================== FAILURES ===================================\n__________________ test_corrupt_message_goes_to_dead_letter ___________________\ntests\\test_worker.py:31: in test_corrupt_message_goes_to_dead_letter\n    assert [m[\"id\"] for m in dead] == [2]\nE   assert [] == [2]\nE     \nE     Right contains one more item: 2\nE     Use -v to get more diff\n=========================== short test summary info ===========================\nFAILED tests/test_worker.py::test_corrupt_message_goes_to_dead_letter - asser...\n1 failed, 2 passed in 0.06s\n"
+    },
+    {
+      "case": "case_004_regex_anchor",
+      "case_id": "case_004",
+      "title": "Slug validator accepts invalid slugs containing special characters",
+      "solver": "baseline",
+      "model": "deepseek-chat",
+      "passed": false,
+      "reasons": [
+        "pytest failed (exit 1)"
+      ],
+      "steps": 2,
+      "fix_attempts": 1,
+      "input_tokens": 10747,
+      "output_tokens": 512,
+      "cache_tokens": 3584,
+      "cost_usd": 0.0036,
+      "elapsed_s": 5.7,
+      "pytest_tail": "sert not True\nE    +  where True = is_valid_slug('hello world')\n_____________________ test_bad_hyphen_placement_rejected ______________________\ntests\\test_validator.py:25: in test_bad_hyphen_placement_rejected\n    assert not is_valid_slug(\"hello-\")\nE   AssertionError: assert not True\nE    +  where True = is_valid_slug('hello-')\n=========================== short test summary info ===========================\nFAILED tests/test_validator.py::test_special_characters_rejected - AssertionE...\nFAILED tests/test_validator.py::test_bad_hyphen_placement_rejected - Assertio...\n2 failed, 3 passed in 0.06s\n"
+    },
+    {
+      "case": "case_005_pagination_off_by_one",
+      "case_id": "case_005",
+      "title": "Catalog API skips the first product on every page",
+      "solver": "baseline",
+      "model": "deepseek-chat",
+      "passed": false,
+      "reasons": [
+        "pytest failed (exit 1)"
+      ],
+      "steps": 2,
+      "fix_attempts": 1,
+      "input_tokens": 22170,
+      "output_tokens": 973,
+      "cache_tokens": 8576,
+      "cost_usd": 0.0073,
+      "elapsed_s": 7.1,
+      "pytest_tail": "'item-2' != 'item-1'\nE     Right contains one more item: 'item-10'\nE     Use -v to get more diff\n=========================== short test summary info ===========================\nFAILED tests/test_paginator.py::test_first_page_returns_first_items - Asserti...\nFAILED tests/test_paginator.py::test_second_page_returns_next_items - Asserti...\nFAILED tests/test_paginator.py::test_last_page_returns_remainder - AssertionE...\nFAILED tests/test_paginator.py::test_all_items_covered_across_pages - Asserti...\nFAILED tests/test_paginator.py::test_page_1_with_per_page_equal_to_length - A...\n5 failed in 0.07s\n"
+    },
+    {
+      "case": "case_006_encoding_latin1",
+      "case_id": "case_006",
+      "title": "Legacy order importer crashes on accented customer names",
+      "solver": "baseline",
+      "model": "deepseek-chat",
+      "passed": false,
+      "reasons": [
+        "pytest failed (exit 1)"
+      ],
+      "steps": 2,
+      "fix_attempts": 1,
+      "input_tokens": 21945,
+      "output_tokens": 739,
+      "cache_tokens": 8448,
+      "cost_usd": 0.007,
+      "elapsed_s": 9.1,
+      "pytest_tail": "n313\\Lib\\csv.py:164: in fieldnames\n    self._fieldnames = next(self.reader)\n                       ^^^^^^^^^^^^^^^^^\n<frozen codecs>:325: in decode\n    ???\nE   UnicodeDecodeError: 'utf-8' codec can't decode byte 0xe9 in position 50: invalid continuation byte\n=========================== short test summary info ===========================\nFAILED tests/test_loader.py::test_all_records_loaded - UnicodeDecodeError: 'u...\nFAILED tests/test_loader.py::test_customer_names_with_accents_preserved - Uni...\nFAILED tests/test_loader.py::test_quantities_are_ints - UnicodeDecodeError: '...\n3 failed in 0.10s\n"
+    },
+    {
+      "case": "case_007_float_precision_tax",
+      "case_id": "case_007",
+      "title": "Tax calculator undercharges on half-cent boundaries",
+      "solver": "baseline",
+      "model": "deepseek-chat",
+      "passed": false,
+      "reasons": [
+        "pytest failed (exit 1)"
+      ],
+      "steps": 2,
+      "fix_attempts": 1,
+      "input_tokens": 22283,
+      "output_tokens": 826,
+      "cache_tokens": 8320,
+      "cost_usd": 0.0071,
+      "elapsed_s": 9.4,
+      "pytest_tail": "rate_percent) == expected\nE   assert 14 == 15\nE    +  where 14 = compute_tax_cents(232, 6.25)\n=========================== short test summary info ===========================\nFAILED tests/test_calc.py::test_half_cents_round_up[50-1.0-1] - assert 0 == 1\nFAILED tests/test_calc.py::test_half_cents_round_up[85-10.0-9] - assert 8 == 9\nFAILED tests/test_calc.py::test_half_cents_round_up[225-10.0-23] - assert 22 ...\nFAILED tests/test_calc.py::test_half_cents_round_up[260-2.5-7] - assert 6 == 7\nFAILED tests/test_calc.py::test_half_cents_round_up[232-6.25-15] - assert 14 ...\n5 failed, 7 passed in 0.08s\n"
+    },
+    {
+      "case": "case_008_stale_cache_flags",
+      "case_id": "case_008",
+      "title": "Feature flags serve stale values after being toggled",
+      "solver": "baseline",
+      "model": "deepseek-chat",
+      "passed": false,
+      "reasons": [
+        "pytest failed (exit 1)"
+      ],
+      "steps": 1,
+      "fix_attempts": 1,
+      "input_tokens": 4336,
+      "output_tokens": 555,
+      "cache_tokens": 0,
+      "cost_usd": 0.0018,
+      "elapsed_s": 6.8,
+      "pytest_tail": "_________\ntests\\test_service.py:21: in test_toggle_back_and_forth\n    assert svc.get_flag(\"dark_mode\", store) is True\nE   AssertionError: assert False is True\nE    +  where False = <function get_flag at 0x00000186678D3380>('dark_mode', {'dark_mode': True})\nE    +    where <function get_flag at 0x00000186678D3380> = svc.get_flag\n=========================== short test summary info ===========================\nFAILED tests/test_service.py::test_reads_reflect_latest_set - AssertionError:...\nFAILED tests/test_service.py::test_toggle_back_and_forth - AssertionError: as...\n2 failed, 2 passed in 0.08s\n"
+    },
+    {
+      "case": "case_009_hour_shift_bucketing",
+      "case_id": "case_009",
+      "title": "Hourly telemetry report shifts daytime peaks forward by one hour",
+      "solver": "baseline",
+      "model": "deepseek-chat",
+      "passed": false,
+      "reasons": [
+        "pytest failed (exit 1)"
+      ],
+      "steps": 2,
+      "fix_attempts": 1,
+      "input_tokens": 23402,
+      "output_tokens": 635,
+      "cache_tokens": 8832,
+      "cost_usd": 0.0073,
+      "elapsed_s": 8.0,
+      "pytest_tail": "get more diff\n=========================== short test summary info ===========================\nFAILED tests/test_reporting.py::test_event_bucketed_into_its_utc_hour[9-0-9]\nFAILED tests/test_reporting.py::test_event_bucketed_into_its_utc_hour[12-0-12]\nFAILED tests/test_reporting.py::test_event_bucketed_into_its_utc_hour[17-30-17]\nFAILED tests/test_reporting.py::test_event_bucketed_into_its_utc_hour[22-59-22]\nFAILED tests/test_reporting.py::test_end_to_end_hourly_report - assert {0: 1,...\nFAILED tests/test_reporting.py::test_peak_hour_matches_source_timestamps - as...\n6 failed, 4 passed in 0.08s\n"
+    },
+    {
+      "case": "case_010_aliasing_config",
+      "case_id": "case_010",
+      "title": "Service configs leak threshold changes into each other",
+      "solver": "baseline",
+      "model": "deepseek-chat",
+      "passed": false,
+      "reasons": [
+        "pytest failed (exit 1)"
+      ],
+      "steps": 2,
+      "fix_attempts": 1,
+      "input_tokens": 11112,
+      "output_tokens": 432,
+      "cache_tokens": 3712,
+      "cost_usd": 0.0036,
+      "elapsed_s": 7.3,
+      "pytest_tail": "ts\\test_loader.py:17: in test_tuning_thresholds_is_isolated\n    assert b[\"thresholds\"][\"p90\"] == 0.95\nE   assert 0.5 == 0.95\n_______________________ test_alerts_config_is_isolated ________________________\ntests\\test_loader.py:24: in test_alerts_config_is_isolated\n    assert b[\"alerts\"][\"pager\"] is False\nE   assert True is False\n=========================== short test summary info ===========================\nFAILED tests/test_loader.py::test_tuning_thresholds_is_isolated - assert 0.5 ...\nFAILED tests/test_loader.py::test_alerts_config_is_isolated - assert True is ...\n2 failed, 2 passed in 0.07s\n"
+    },
+    {
+      "case": "case_011_retry_off_by_one",
+      "case_id": "case_011",
+      "title": "Payment retry makes one extra charge attempt beyond the budget",
+      "solver": "baseline",
+      "model": "deepseek-chat",
+      "passed": false,
+      "reasons": [
+        "pytest failed (exit 1)"
+      ],
+      "steps": 2,
+      "fix_attempts": 1,
+      "input_tokens": 13588,
+      "output_tokens": 573,
+      "cache_tokens": 4480,
+      "cost_usd": 0.0044,
+      "elapsed_s": 7.5,
+      "pytest_tail": "ts, got {len(calls)}\"\nE   AssertionError: expected exactly 3 attempts, got 4\nE   assert 4 == 3\nE    +  where 4 = len([1, 1, 1, 1])\n_________________________ test_single_attempt_budget __________________________\ntests\\test_retry.py:48: in test_single_attempt_budget\n    assert len(calls) == 1\nE   assert 2 == 1\nE    +  where 2 = len([1, 1])\n=========================== short test summary info ===========================\nFAILED tests/test_retry.py::test_exhausts_exactly_max_attempts_then_raises - ...\nFAILED tests/test_retry.py::test_single_attempt_budget - assert 2 == 1\n2 failed, 2 passed in 0.06s\n"
+    }
+  ]
+}

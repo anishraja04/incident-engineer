@@ -1,0 +1,1 @@
+{"role": "assistant", "content": "--- a/queue/worker.py\n+++ b/queue/worker.py\n@@ -25,7 +25,7 @@ def drain(queue, ledger, dead_letter):\n         try:\n             process_message(msg, ledger)\n-        except Exception:\n-            pass\n+        except CorruptMessageError:\n+            dead_letter.append(msg)", "tool": "baseline_attempt_1"}
