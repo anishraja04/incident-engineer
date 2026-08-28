@@ -28,7 +28,8 @@ copy .env.example .env        # Windows
 |---|---|---|
 | `LLM_BASE_URL` | OpenAI-compatible endpoint | `https://api.deepseek.com` |
 | `LLM_API_KEY` | your key | `sk-...` |
-| `LLM_MODEL` | model id | `deepseek-v4-pro` |
+| `LLM_MODEL` | model for the investigator agent | `deepseek-v4-pro` |
+| `LLM_TRIAGE_MODEL` | model for the triage agent (cheap) | `deepseek-chat` |
 
 No other setup is required: every case repo is stdlib-only Python.
 
@@ -45,8 +46,10 @@ What you get:
   agent trajectory for every case (every instruction, tool call, tool
   response, checkpoint and retry)
 
-Expected output (DeepSeek v4 pro, our run): **11/11 passed**, total cost
-≈ $0.05, total wall time ≈ 5.5 min, avg 8.9 steps per case.
+Expected output (final two-agent configuration, our run): **11/11 passed**,
+total cost ≈ $0.09, total wall time ≈ 9 min, avg ~7 steps per case. The
+pipeline runs two agents: a cheap triage model (hypotheses) + a strong
+investigator (tools, diff-review skill, verification loop).
 
 ## 3. Run the baseline (manual process)
 
@@ -93,7 +96,7 @@ python eval/verify.py <case_dir> <workspace_path>
 | | Runtime (11 cases) | Cost (11 cases) |
 |---|---|---|
 | Baseline | ~85 s wall | ~$0.06 |
-| Agent | ~5.5 min wall | ~$0.05 |
+| Agent | ~9 min wall | ~$0.09 |
 
 Cost is metered from actual token usage with the model's list price;
 `agent/llm.py` holds the price table (edit if prices change). Human time:

@@ -18,14 +18,17 @@ aware datetime" correctly, patch does not apply).
 Walk the actual trajectory of the hard case — "hourly telemetry report
 shifts daytime peaks by +1 hour":
 
-1. Agent reads the incident + logs → forms ranked hypotheses.
-2. Explores 3 modules: ingest → report → bucket.
+1. **Triage agent** (cheap model) reads the incident + logs + file
+   inventory → hands over ranked hypotheses (its #1: a legacy daylight-
+   saving adjustment in `bucket.py`).
+2. Investigator explores 3 modules: ingest → report → bucket.
 3. Evidence ledger: hours 0-8 and 23 are correct, only 09:00-22:59 shift →
    that irregularity is the fingerprint of a conditional legacy hack.
 4. Human checkpoint: agent summarizes hypothesis for the operator.
-5. Fixes `bucket.py` (removes the legacy +1h adjustment), re-runs the
-   suite → 10 passed. (Screen shows the JSONL trajectory + the pytest
-   output going green.)
+5. Diff-review skill: static gate confirms only `bucket.py` touched.
+6. Fixes `bucket.py` (removes the legacy +1h adjustment), re-runs the
+   suite → 10 passed. (Screen shows the JSONL trajectory + pytest going
+   green.)
 
 ## 2:10-3:10 — Final comparison
 
@@ -35,7 +38,7 @@ Same 11 cases, same verifier:
 |---|---|---|
 | Incidents resolved | 0/11 | **11/11** |
 | Human time per task | ~30 min | ~5 min |
-| Cost per task | $0.0052 | $0.0045 |
+| Cost per task | $0.0052 | $0.0079 |
 
 Cross-model: same agent, Gemini flash-lite → 2/2 sampled. Model-agnostic.
 
@@ -52,7 +55,7 @@ improvement to measure, so we removed it and kept the honest manual
 baseline.
 
 Secondary changes: bounded evidence ledger (−9% cost), stronger reasoning
-model (−61% cost).
+model (−61% cost), two-agent orchestration with a cheap triage model.
 
 ## 4:20-5:00 — Failure mode + hot take
 

@@ -48,6 +48,7 @@ Available tools:
   run_tests()
   write_file(rel, content)
   run_python(code)
+  review_diff()     # static sanity check of your pending changes
   submit(note="...")
 """
 
@@ -115,10 +116,111 @@ def _parse_action(text: str) -> dict | None:
     return None
 
 
-class IncidentAgent:
+class TriageAgent:
+    """Stage 1 of the pipeline: a fast, cheap model reads the incident and
+    the logs and produces ranked hypotheses + an investigation plan.
+
+    The strong investigator model then works FROM these hypotheses —
+    memory carried forward between two different agents (orchestration)."""
+
+    PROMPT = """You are a triage engineer. Read the incident report and the
+captured logs, and look at the repository file inventory. Produce a
+root-cause analysis in JSON ONLY:
+
+{
+  "hypotheses": [
+    {"rank": 1, "hypothesis": "...", "why": "...", "evidence_to_check": "..."}
+  ],
+  "plan": ["step 1", "step 2", ...]
+}
+
+Rules:
+- 2-5 ranked hypotheses. Rank by likelihood given the evidence in the logs.
+- Point at specific files/functions from the inventory when possible.
+- You have NOT read the source code — say so in "why" when guessing.
+- No markdown, no text outside the JSON object.
+"""
+
     def __init__(self, llm: LLM | None = None) -> None:
-        self.llm = llm or LLM()
+        import os as _os
+
+        self.llm = llm or LLM(model=_os.environ.get("LLM_TRIAGE_MODEL", "deepseek-v4-flash"))
         self.usage = Usage()
+        self.summary: str = ""
+
+    def run(self, workspace: Path) -> str:
+        incident = ""
+        log_text = ""
+        inventory = ""
+        try:
+            incident = (workspace / "incident.md").read_text(errors="replace")
+        except OSError:
+            pass
+        try:
+            log_text = (workspace / "logs" / "incident.log").read_text(errors="replace")[-4000:]
+        except OSError:
+            pass
+        try:
+            entries = []
+            for p in sorted(workspace.rglob("*")):
+                if p.is_file() and ".git" not in p.parts and "__pycache__" not in p.parts:
+                    entries.append(f"{p.relative_to(workspace).as_posix()} ({p.stat().st_size}B)")
+            inventory = "\n".join(entries[:80])
+        except OSError:
+            pass
+
+        user = (
+            "=== INCIDENT REPORT ===\n" + incident
+            + "\n\n=== CAPTURED LOGS (tail) ===\n" + log_text
+            + "\n\n=== REPOSITORY INVENTORY ===\n" + inventory
+            + "\n\nOutput the JSON analysis now."
+        )
+        res = self.llm.chat(
+            [{"role": "system", "content": self.PROMPT}, {"role": "user", "content": user}],
+            temperature=0.2,
+            max_tokens=1200,
+        )
+        text = (res.content or "").strip()
+        if not text:
+            # retry once with a slightly different sampling config
+            res2 = self.llm.chat(
+                [{"role": "system", "content": self.PROMPT}, {"role": "user", "content": user}],
+                temperature=0.5,
+                max_tokens=1500,
+            )
+            text = (res2.content or "").strip()
+            self.usage.input_tokens += res2.usage.input_tokens
+            self.usage.output_tokens += res2.usage.output_tokens
+            self.usage.cache_read_tokens += res2.usage.cache_read_tokens
+        self.usage.input_tokens += res.usage.input_tokens
+        self.usage.output_tokens += res.usage.output_tokens
+        self.usage.cache_read_tokens += res.usage.cache_read_tokens
+        if not text:
+            self.summary = "TRIAGE UNAVAILABLE: model returned empty output; proceeding without hypotheses."
+            return self.summary
+        try:
+            parsed = json.loads(text)
+            hyps = parsed.get("hypotheses", [])
+            plan = parsed.get("plan", [])
+            lines = [f"H{int(h.get('rank', i + 1))}: {h.get('hypothesis', '')} — {h.get('why', '')}"
+                     for i, h in enumerate(hyps)]
+            self.summary = (
+                "TRIAGE SUMMARY (produced by a separate triage agent, cheap model; "
+                "treat as hypotheses to VERIFY, not facts):\n"
+                + "\n".join(lines)
+                + "\nSuggested plan: " + "; ".join(plan)
+            )
+        except (json.JSONDecodeError, TypeError):
+            self.summary = "TRIAGE SUMMARY (raw):\n" + text[:2000]
+        return self.summary
+
+
+class IncidentAgent:
+    def __init__(self, llm: LLM | None = None, triage: TriageAgent | None = None) -> None:
+        self.llm = llm or LLM()
+        self.triage = triage or TriageAgent()
+        self.usage = Usage()
+        self.triage_usage = Usage()
 
     def _mock_llm(self):
         """Scripted responder for infra testing (not for real evaluation).
@@ -131,6 +233,7 @@ class IncidentAgent:
             def __init__(self, owner):
                 self.owner = owner
                 self.stage = 0
+                self._is_mock = True
 
             def chat(self, messages, **kw):
                 import subprocess as sp
@@ -164,13 +267,29 @@ class IncidentAgent:
         env_extra = spec.get("env", {})
         tools = Tools(workspace, env_extra)
         result = RunResult()
+
+        # Stage 0: orchestration — a separate, cheap triage agent reads the
+        # incident and hands ranked hypotheses to the investigator.
+        if not getattr(self.llm, "_is_mock", False):
+            triage_summary = self.triage.run(workspace)
+            result.trajectories.append({"role": "triage", "content": triage_summary, "tool": "triage"})
+            if trajectory_path:
+                with open(trajectory_path, "a", encoding="utf-8") as f:
+                    f.write(json.dumps({"role": "triage", "content": triage_summary, "tool": "triage"}) + "\n")
+            self.usage.input_tokens += self.triage.usage.input_tokens
+            self.usage.output_tokens += self.triage.usage.output_tokens
+            self.usage.cache_read_tokens += self.triage.usage.cache_read_tokens
+        else:
+            triage_summary = ""
+
         messages: list[dict] = [
             {"role": "system", "content": SYSTEM_CORE},
             {
                 "role": "user",
                 "content": (
                     "INCIDENT BEGINS NOW.\n"
-                    "Read incident.md first, then logs/incident.log, then explore "
+                    + (triage_summary + "\n\n" if triage_summary else "")
+                    + "Read incident.md first, then logs/incident.log, then explore "
                     "the repository. Fix the service so the whole test suite passes. "
                     "Never modify tests/."
                 ),
@@ -213,7 +332,13 @@ class IncidentAgent:
                 result.notes.append(action.get("note", ""))
                 break
 
-            if name == "write_file":
+            args = {k: v for k, v in action.items() if k != "action"}
+            out = tools.execute(name, **args)
+            log("tool", out, tool=name)
+            messages.append({"role": "user", "content": TOOL_RESULT_PREFIX + out})
+
+            write_succeeded = name == "write_file" and out.startswith("OK:")
+            if write_succeeded:
                 fix_attempts += 1
                 if fix_attempts > MAX_FIX_ATTEMPTS:
                     msg = (
@@ -223,13 +348,6 @@ class IncidentAgent:
                     log("tool", msg, tool="budget")
                     messages.append({"role": "user", "content": msg})
                     continue
-
-            args = {k: v for k, v in action.items() if k != "action"}
-            out = tools.execute(name, **args)
-            log("tool", out, tool=name)
-            messages.append({"role": "user", "content": TOOL_RESULT_PREFIX + out})
-
-            if name == "write_file":
                 step += 1
                 test_out = tools.run_tests()
                 log("tool", test_out, tool="run_tests_after_fix")

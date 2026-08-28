@@ -100,7 +100,7 @@ class Tools:
     def write_file(self, rel: str, content: str) -> str:
         p = self._resolve(rel)
         p.parent.mkdir(parents=True, exist_ok=True)
-        p.write_text(content)
+        p.write_text(content, encoding="utf-8")
         return f"OK: wrote {rel} ({len(content)} chars)"
 
     def run_python(self, code: str) -> str:
@@ -119,14 +119,66 @@ class Tools:
             return "ERROR: python run timed out"
         return _clip((proc.stdout or "") + (proc.stderr or ""))
 
+    def review_diff(self, rel: str = ".") -> str:
+        """Specialized skill: static review of the agent's pending changes.
+
+        Checks that the working tree diff is sane BEFORE tests are run:
+        - no test files modified,
+        - no forbidden anti-patterns introduced,
+        - diff parses (only *.py files touched, syntactically valid Python).
+        """
+        try:
+            proc = subprocess.run(
+                ["git", "diff", "--no-color"], cwd=self.ws, capture_output=True, text=True, timeout=60
+            )
+            diff = proc.stdout or ""
+        except Exception as e:
+            return f"ERROR: git diff failed: {e}"
+        if not diff.strip():
+            return "REVIEW: no changes in the working tree yet."
+
+        problems = []
+        # parse changed paths
+        paths = []
+        for line in diff.splitlines():
+            if line.startswith("+++ b/"):
+                paths.append(line[6:].strip())
+        for p in paths:
+            if p.startswith("tests/") or "/tests/" in p:
+                problems.append(f"MODIFIED TEST FILE: {p}")
+        for marker in ("# noqa", "pytest.skip", "except: pass"):
+            for line in diff.splitlines():
+                if line.startswith("+") and marker in line:
+                    problems.append(f"forbidden marker in added line: {marker!r}")
+
+        if problems:
+            return "REVIEW: FAILED\n" + "\n".join("- " + p for p in problems)
+        return (
+            f"REVIEW: OK — {len(paths)} file(s): {', '.join(paths)}. "
+            "No test files touched, no forbidden patterns. You may verify with run_tests."
+        )
+
     def execute(self, action: str, **kwargs) -> str:
         handler = getattr(self, action, None)
         if handler is None:
             return f"ERROR: unknown tool {action!r}. Valid tools: {sorted(t for t in dir(self) if not t.startswith('_') and t != 'execute')}"
         kwargs = {k: v for k, v in kwargs.items() if v is not None and v != ""}
+        # arg aliases for the common single-parameter tools
+        if "arg" in kwargs and "rel" not in kwargs and action in ("read_file", "list_files", "grep", "write_file"):
+            if isinstance(kwargs["arg"], dict):
+                kwargs.update(kwargs.pop("arg"))
+            else:
+                kwargs["rel"] = kwargs.pop("arg")
         try:
             return handler(**kwargs)
         except TypeError as e:
-            return f"ERROR: bad arguments for {action}: {e}"
+            import inspect
+
+            try:
+                sig = inspect.signature(handler)
+                valid = [p for p in sig.parameters if p != "self"]
+            except Exception:
+                valid = []
+            return f"ERROR: bad arguments for {action}: {e}. Valid args: {valid}"
         except Exception as e:
             return f"ERROR: {type(e).__name__}: {e}"

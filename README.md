@@ -30,35 +30,52 @@ human ever sees it.
 
 ## What the agent solution does
 
-`IncidentAgent` is a staged, tool-using workflow with memory and a
-verification loop:
+Two agents orchestrate (memory carried from one to the other):
 
 ```
-INCIDENT ──▶ 1. TRIAGE      read incident + logs, rank hypotheses
-            2. INVESTIGATE  read/search/test the repo; keep an evidence
-                            ledger (rejected hypotheses stay visible)
-            3. FIX          minimal patch via file tools
-            4. VERIFY       run the full test suite; on failure, revise
-                            (max 3 fix attempts, human checkpoint at
-                            regular intervals)
+INCIDENT ──▶ 1. TRIAGE  (cheap model)   read incident + logs + file inventory
+              │                          -> ranked hypotheses + plan (JSON)
+              ▼
+             2. INVESTIGATE (strong model)  tools: list/read/grep/run-tests/
+              │                             controlled python; evidence ledger
+              │                             (rejected hypotheses stay visible)
+             3. FIX        minimal patch via file tools
+             4. REVIEW     static diff gate (tests/ untouched, no forbidden
+              │            patterns)  ->  "diff-review skill"
+             5. VERIFY     run the full test suite; on failure, revise
+                           (max 3 fix attempts, human checkpoint)
         ──▶ RESOLVED: only submitted when the suite passes
 ```
 
 Design choices, each tied to a measured change (see
 [IMPROVEMENT_CHANGELOG.md](IMPROVEMENT_CHANGELOG.md)):
 
+- **Two-agent orchestration** — a cheap triage model forms hypotheses;
+  a strong investigator verifies them with tools. Different models, one
+  pipeline, memory carried between them.
 - **Tools, not prompts** — file listing, targeted reads, grep, test
   runner, controlled Python execution. The agent reads only what it needs.
 - **Verification loop** — the agent may only submit when `pytest` passes;
   failed attempts feed back into the next hypothesis.
+- **Diff-review skill** — a static gate that rejects edits touching
+  tests/ or containing forbidden patterns *before* the test run.
 - **Memory / evidence ledger** — bounded context compaction keeps every
   hypothesis (including rejected ones) visible without unbounded token
-  growth (−9% cost, kept).
+  growth.
 - **Model-agnostic** — same code runs on DeepSeek v4 and Gemini 3.1
   flash-lite with identical results on the sampled cases.
 - **Human checkpoint** — the operator is asked for a status summary at
-  fixed intervals; consequential actions are edits inside an isolated
-  workspace only.
+  fixed intervals; edits happen only inside an isolated workspace.
+
+## What makes this different from off-the-shelf AI debugging tools
+
+| | Off-the-shelf (Copilot, Datadog AI...) | This solution |
+|---|---|---|
+| Verification | suggests fixes, rarely runs your tests | submits **only** when its own test suite passes |
+| Evaluation | cherry-picked demos | 11 incidents, deterministic verifier, same cases for baseline and agent, full trajectories |
+| Memory | — | bounded hypothesis ledger, visible in trajectories |
+| Orchestration | — | two agents, two models, one pipeline |
+| Human-in-loop | — | checkpoint protocol at fixed intervals |
 
 ## Results (11 incidents, same verifier, same cases)
 
@@ -66,10 +83,10 @@ Design choices, each tied to a measured change (see
 |---|---|---|
 | Incidents resolved | 0/11 (0%) | **11/11 (100%)** |
 | Human time per task | ~30 min | ~5 min |
-| Cost per task | $0.0052 | $0.0045 |
-| Steps per task | 2 | 8.9 avg |
+| Cost per task | $0.0052 | $0.0079 |
+| Steps per task | 2 | ~7 avg |
 
-Full evidence: `eval/results/`, `trajectories/runs/`, and the changelog.
+Full evidence: `eval/results/`, `trajectories/submitted/`, and the changelog.
 
 ## Repository layout
 
