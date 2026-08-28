@@ -1,7 +1,9 @@
-"""Baseline solver: direct prompts, no tools, no feedback loop.
+"""Baseline solver: the manual process, no tools, no feedback loop.
 
-Attempt 1: one direct prompt with the incident, the failing run output and
-the full repository source. The returned diff is applied and the tests run.
+Attempt 1: one direct prompt with the incident report, the captured logs,
+the README and the test suite — but NO repository source (the manual
+process: an engineer pasting the incident into a chat model without code
+access). The returned diff is applied and the tests run.
 
 Attempt 2 (only if attempt 1 fails): one retry where the model sees the
 test failure output from attempt 1 and produces a revised diff. This
@@ -16,8 +18,10 @@ from pathlib import Path
 
 from agent.llm import LLM, LLMResult, Usage
 
-SYSTEM_PROMPT = """You are a senior on-call engineer. You are given an incident
-report, the failing run output, and the full source of a small service.
+SYSTEM_PROMPT = """You are a senior on-call engineer triaging an incident. You
+have the incident report, the captured failing-run output, the service
+README and the test suite — but NOT the service source code (you are
+working from an ops console, without repository access).
 
 Produce a minimal, correct fix. Output ONLY a unified diff in standard git
 diff format — for every file start with:
@@ -68,8 +72,30 @@ def build_user_prompt(incident: str, logs: str, files: dict[str, str]) -> str:
 
 class BaselineSolver:
     def __init__(self, llm: LLM | None = None) -> None:
-        self.llm = llm or LLM()
+        # The manual-process baseline deliberately uses a fast chat model
+        # (what an engineer would paste the incident into), not the strong
+        # reasoning model used by the agent.
+        import os as _os
+
+        self.llm = llm or LLM(model=_os.environ.get("LLM_BASELINE_MODEL", "deepseek-chat"))
         self.usage = Usage()
+
+    def _chat_nonempty(self, msgs: list[dict]) -> str:
+        """One logical attempt; retries once if the API returns empty
+        content (observed flakiness), so the baseline is not punished by
+        a transport-level hiccup."""
+        res: LLMResult = self.llm.chat(msgs, temperature=0.0, max_tokens=4096)
+        self.usage.input_tokens += res.usage.input_tokens
+        self.usage.output_tokens += res.usage.output_tokens
+        self.usage.cache_read_tokens += res.usage.cache_read_tokens
+        text = res.content.strip()
+        if not text:
+            res2 = self.llm.chat(msgs, temperature=0.5, max_tokens=4096)
+            self.usage.input_tokens += res2.usage.input_tokens
+            self.usage.output_tokens += res2.usage.output_tokens
+            self.usage.cache_read_tokens += res2.usage.cache_read_tokens
+            text = (res2.content or "").strip()
+        return text
 
     def solve(
         self, incident: str, logs: str, files: dict[str, str]
@@ -79,11 +105,7 @@ class BaselineSolver:
             {"role": "system", "content": SYSTEM_PROMPT},
             {"role": "user", "content": build_user_prompt(incident, logs, files)},
         ]
-        res: LLMResult = self.llm.chat(msgs, temperature=0.0, max_tokens=4096)
-        self.usage.input_tokens += res.usage.input_tokens
-        self.usage.output_tokens += res.usage.output_tokens
-        self.usage.cache_read_tokens += res.usage.cache_read_tokens
-        return res.content.strip(), self.usage
+        return self._chat_nonempty(msgs), self.usage
 
     def retry(
         self,
@@ -100,8 +122,4 @@ class BaselineSolver:
             {"role": "assistant", "content": previous_attempt},
             {"role": "user", "content": RETRY_PROMPT + "\n\n=== FAILING TESTS ===\n" + test_output[-4000:]},
         ]
-        res: LLMResult = self.llm.chat(msgs, temperature=0.0, max_tokens=4096)
-        self.usage.input_tokens += res.usage.input_tokens
-        self.usage.output_tokens += res.usage.output_tokens
-        self.usage.cache_read_tokens += res.usage.cache_read_tokens
-        return res.content.strip(), self.usage
+        return self._chat_nonempty(msgs), self.usage
