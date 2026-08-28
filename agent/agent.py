@@ -56,6 +56,30 @@ TOOL_RESULT_PREFIX = "TOOL RESULT (read-only feedback; continue the pipeline):\n
 MAX_STEPS = 60
 MAX_FIX_ATTEMPTS = 3
 HUMAN_CHECKPOINT_EVERY = 8
+CONTEXT_WINDOW = 14  # keep the last N messages verbatim; compact older tool output
+
+
+def _compact(messages: list[dict], evidence: list[str]) -> list[dict]:
+    """Keep the conversation bounded: fold old tool results into a compact
+    evidence ledger, keep the last CONTEXT_WINDOW messages verbatim."""
+    if len(messages) <= CONTEXT_WINDOW + 2:
+        return messages
+    head = messages[0]  # system
+    tail = messages[-CONTEXT_WINDOW:]
+    # find user messages (tool results) in the part being compacted
+    body = messages[1:-CONTEXT_WINDOW]
+    for msg in body:
+        if msg["role"] == "user" and msg["content"].startswith(TOOL_RESULT_PREFIX):
+            text = msg["content"][len(TOOL_RESULT_PREFIX) :]
+            if len(text) > 2000:
+                text = text[:2000] + "…"
+            evidence.append(text)
+    ledger = "EVIDENCE LEDGER (older tool outputs, compacted):\n"
+    if evidence:
+        ledger += "\n".join(f"- {e}" for e in evidence[-12:])
+    else:
+        ledger += "(empty)"
+    return [head, {"role": "user", "content": ledger}] + tail
 
 
 @dataclass
@@ -154,6 +178,7 @@ class IncidentAgent:
         ]
         fix_attempts = 0
         step = 0
+        evidence: list[str] = []
 
         def log(role: str, content: str, tool: str = "") -> None:
             rec = {"role": role, "content": content, "tool": tool}
@@ -164,6 +189,7 @@ class IncidentAgent:
 
         while step < max_steps:
             step += 1
+            messages = _compact(messages, evidence)
             res = self.llm.chat(messages, temperature=0.2, max_tokens=800)
             u = res.usage
             self.usage.input_tokens += u.input_tokens

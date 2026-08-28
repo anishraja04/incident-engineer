@@ -45,10 +45,24 @@ def build_user_prompt(incident: str, logs: str, files: dict[str, str]) -> str:
     sections = [incident]
     if logs.strip():
         sections.append("=== FAILING RUN OUTPUT (logs/incident.log) ===\n" + logs[-6000:])
-    sections.append("=== REPOSITORY FILES ===")
+    sections.append(
+        "=== REPOSITORY ==="
+        "\nThe service code is NOT shown (you have no repository access). "
+        "Only the README and the test suite are available:"
+    )
     for path, content in files.items():
-        sections.append(f"--- {path} ---\n{content}")
-    sections.append("Output your unified diff now. Do not explain.")
+        if path.endswith(".md") or path.startswith("tests/"):
+            sections.append(f"--- {path} ---\n{content}")
+    sections.append(
+        "=== OTHER FILES (paths only) ===\n"
+        + "\n".join(f"- {p}" for p in sorted(files) if not (p.endswith(".md") or p.startswith("tests/")))
+    )
+    sections.append(
+        "Produce a minimal, correct unified diff for the source files you believe "
+        "are broken. The diff must match the actual source code, so only include "
+        "hunks you are confident about. If you cannot determine the fix, output "
+        "the text: NO FIX NEEDED."
+    )
     return "\n\n".join(sections)
 
 
