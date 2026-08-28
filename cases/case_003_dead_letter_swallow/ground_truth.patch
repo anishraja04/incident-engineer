@@ -1,0 +1,12 @@
+diff --git a/queue/worker.py b/queue/worker.py
+index 99f45ec..e757617 100644
+--- a/queue/worker.py
++++ b/queue/worker.py
+@@ -26,4 +26,4 @@ def drain(queue, ledger, dead_letter):
+         try:
+             process_message(msg, ledger)
+         except Exception:
+-            pass
+\ No newline at end of file
++            dead_letter.append(msg)
+\ No newline at end of file

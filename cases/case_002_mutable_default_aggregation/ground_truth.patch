@@ -1,0 +1,19 @@
+diff --git a/sales/aggregator.py b/sales/aggregator.py
+index 30e88ae..56734ad 100644
+--- a/sales/aggregator.py
++++ b/sales/aggregator.py
+@@ -6,11 +6,13 @@ must produce totals for exactly the events it received.
+ """
+ 
+ 
+-def aggregate_sales(events, totals={}):
++def aggregate_sales(events, totals=None):
+     """Return a dict mapping product -> total units sold for `events`.
+ 
+     Must reflect ONLY the events passed in this call.
+     """
++    if totals is None:
++        totals = {}
+     for product, units in events:
+         totals[product] = totals.get(product, 0) + units
+     return totals

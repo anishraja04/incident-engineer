@@ -1,0 +1,17 @@
+{
+  "id": "case_002",
+  "slug": "mutable-default-aggregation",
+  "title": "Sales aggregation reports inflated totals across requests",
+  "severity": "P1",
+  "service": "sales/aggregator",
+  "description": "Per-product sales totals leak state between API requests — daily reports show inflated numbers.",
+  "tags": ["mutable-default", "state-leak", "python-gotcha"],
+  "challenging": false,
+  "budget_steps": 60,
+  "env": {},
+  "check": {
+    "test_files_immutable": ["tests/"],
+    "must_pass": ["tests/"],
+    "must_not_contain": ["# noqa", "pytest.skip", "except: pass"]
+  }
+}

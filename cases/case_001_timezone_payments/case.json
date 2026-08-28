@@ -1,0 +1,17 @@
+{
+  "id": "case_001",
+  "slug": "timezone-payments",
+  "title": "Recurring payment scheduler crashes with TypeError on worker ticks",
+  "severity": "P1",
+  "service": "payments/scheduler",
+  "description": "Worker tick crashes: 'can't compare offset-naive and offset-aware datetimes' — recurring charges stop processing.",
+  "tags": ["datetime", "timezone", "naive-vs-aware"],
+  "challenging": false,
+  "budget_steps": 60,
+  "env": {"TZ": "Asia/Kolkata"},
+  "check": {
+    "test_files_immutable": ["tests/"],
+    "must_pass": ["tests/"],
+    "must_not_contain": ["# noqa", "pytest.skip", "except: pass", "TypeError"]
+  }
+}

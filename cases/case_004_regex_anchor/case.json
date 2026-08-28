@@ -1,0 +1,17 @@
+{
+  "id": "case_004",
+  "slug": "regex-anchor",
+  "title": "Slug validator accepts invalid slugs containing special characters",
+  "severity": "P2",
+  "service": "slugcheck/validator",
+  "description": "Invalid slugs like 'hello world!' and 'hello@example.com' pass validation and get published as URLs.",
+  "tags": ["regex", "validation", "anchoring"],
+  "challenging": false,
+  "budget_steps": 60,
+  "env": {},
+  "check": {
+    "test_files_immutable": ["tests/"],
+    "must_pass": ["tests/"],
+    "must_not_contain": ["# noqa", "pytest.skip", "except: pass"]
+  }
+}

@@ -1,0 +1,28 @@
+diff --git a/payments/scheduler.py b/payments/scheduler.py
+index de947d5..4130925 100644
+--- a/payments/scheduler.py
++++ b/payments/scheduler.py
+@@ -3,7 +3,7 @@
+ The worker loop calls `is_due(payment)` once per tick. When a payment is due
+ it is charged and `advance(payment)` computes the next run.
+ """
+-from datetime import datetime, timedelta
++from datetime import datetime, timedelta, timezone
+ 
+ from payments.models import Payment
+ 
+@@ -11,12 +11,12 @@ from payments.models import Payment
+ def now_utc() -> datetime:
+     """Current wall-clock time as naive UTC (as used by the rest of the
+     codebase and by the database layer)."""
+-    return datetime.utcnow()
++    return datetime.now(timezone.utc)
+ 
+ 
+ def is_due(payment: Payment, now: datetime | None = None) -> bool:
+     """True when the payment's next run time has been reached."""
+-    current = now if now is not None else datetime.now()
++    current = now if now is not None else datetime.now(timezone.utc)
+     return current >= payment.next_run_at
+ 
+ 

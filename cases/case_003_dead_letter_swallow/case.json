@@ -1,0 +1,17 @@
+{
+  "id": "case_003",
+  "slug": "dead-letter-swallow",
+  "title": "Order messages silently disappear from the queue",
+  "severity": "P1",
+  "service": "queue/worker",
+  "description": "Messages that fail processing vanish without a trace — no dead-letter entry, no retry, orders never fulfilled.",
+  "tags": ["exception-handling", "dead-letter", "message-loss"],
+  "challenging": false,
+  "budget_steps": 60,
+  "env": {},
+  "check": {
+    "test_files_immutable": ["tests/"],
+    "must_pass": ["tests/"],
+    "must_not_contain": ["# noqa", "pytest.skip", "except: pass"]
+  }
+}
