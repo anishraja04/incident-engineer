@@ -1,0 +1,6 @@
+order_id,customer_name,item,quantity
+ORD-0001,José Almeida,espresso machine,2
+ORD-0002,Müller & Söhne,grinder,5
+ORD-0003,Anna López,drip kettle,1
+ORD-0004,Björn Åkesson,scale,3
+ORD-0005,Stéphane Girard,tamper,4
