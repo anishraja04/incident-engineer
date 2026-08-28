@@ -1,0 +1,17 @@
+{
+  "id": "case_009",
+  "slug": "hour-shift-bucketing",
+  "title": "Hourly telemetry report shifts daytime peaks forward by one hour",
+  "severity": "P1",
+  "service": "telemetry/bucket",
+  "description": "Overnight hours report correctly, but every daytime hour (09:00-22:59 UTC) appears shifted +1h in the ops dashboard — root cause is an undocumented legacy adjustment in the bucketing layer.",
+  "tags": ["multi-module", "datetime", "legacy-code", "cross-module-trace"],
+  "challenging": true,
+  "budget_steps": 90,
+  "env": {},
+  "check": {
+    "test_files_immutable": ["tests/"],
+    "must_pass": ["tests/"],
+    "must_not_contain": ["# noqa", "pytest.skip", "except: pass"]
+  }
+}

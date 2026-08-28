@@ -34,7 +34,11 @@ _load_dotenv()
 
 
 PRICES: dict[str, tuple[float, float]] = {
-    # model -> (input $/1M tokens, output $/1M tokens)
+    # model -> (input $/1M tokens, output $/1M tokens) — update to official
+    # prices before the final report if they change.
+    "gemini-3-flash-preview": (0.30, 2.50),
+    "gemini-3.1-flash-lite": (0.10, 0.40),
+    "gemini-3.1-pro-preview": (1.25, 10.00),
     "deepseek-chat": (0.27, 1.10),
     "deepseek-reasoner": (0.55, 2.19),
     "gemini-2.5-pro": (1.25, 10.00),
@@ -82,6 +86,7 @@ class LLM:
         temperature: float = 0.2,
         max_tokens: int | None = 4096,
         json_mode: bool = False,
+        retries: int = 3,
     ) -> LLMResult:
         kwargs: dict[str, Any] = {
             "model": self.model,
@@ -92,16 +97,38 @@ class LLM:
             kwargs["max_tokens"] = max_tokens
         if json_mode:
             kwargs["response_format"] = {"type": "json_object"}
-        resp = self.client.chat.completions.create(**kwargs)
-        u = resp.usage
-        usage = Usage(
-            input_tokens=u.prompt_tokens or 0,
-            output_tokens=u.completion_tokens or 0,
-            cache_read_tokens=getattr(u, "prompt_tokens_details", None)
-            and getattr(u.prompt_tokens_details, "cached_tokens", 0)
-            or 0,
-        )
-        return LLMResult(content=resp.choices[0].message.content or "", usage=usage, raw=resp)
+        import time as _time
+
+        last_err = None
+        for attempt in range(retries + 1):
+            try:
+                resp = self.client.chat.completions.create(**kwargs)
+                u = resp.usage
+                usage = Usage(
+                    input_tokens=u.prompt_tokens or 0,
+                    output_tokens=u.completion_tokens or 0,
+                    cache_read_tokens=getattr(u, "prompt_tokens_details", None)
+                    and getattr(u.prompt_tokens_details, "cached_tokens", 0)
+                    or 0,
+                )
+                return LLMResult(
+                    content=resp.choices[0].message.content or "", usage=usage, raw=resp
+                )
+            except Exception as e:  # noqa: BLE001
+                last_err = e
+                msg = str(e)
+                if "429" in msg or "quota" in msg.lower() or "RESOURCE_EXHAUSTED" in msg:
+                    import re as _re
+
+                    m = _re.search(r"retry in (\d+(?:\.\d+)?)s", msg)
+                    delay = float(m.group(1)) if m else 30.0 * (attempt + 1)
+                    _time.sleep(min(delay, 60))
+                    continue
+                if attempt < retries:
+                    _time.sleep(5 * (attempt + 1))
+                    continue
+                raise
+        raise last_err
 
     def chat_json(self, messages: list[dict], temperature: float = 0.2) -> LLMResult:
         res = self.chat(messages, temperature=temperature, json_mode=True)

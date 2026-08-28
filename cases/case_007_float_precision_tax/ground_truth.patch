@@ -1,0 +1,15 @@
+diff --git a/tax/calc.py b/tax/calc.py
+index 013849f..9e4a4ee 100644
+--- a/tax/calc.py
++++ b/tax/calc.py
+@@ -6,4 +6,7 @@ rounded to the nearest cent with halves rounded UP.
+ 
+ 
+ def compute_tax_cents(amount_cents: int, rate_percent: float) -> int:
+-    return round(amount_cents * rate_percent / 100)
+\ No newline at end of file
++    from decimal import ROUND_HALF_UP, Decimal
++
++    exact = Decimal(amount_cents) * Decimal(str(rate_percent)) / Decimal(100)
++    return int(exact.quantize(Decimal("1"), rounding=ROUND_HALF_UP))
+\ No newline at end of file

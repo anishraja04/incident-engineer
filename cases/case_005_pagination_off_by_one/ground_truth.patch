@@ -1,0 +1,13 @@
+diff --git a/catalog/paginator.py b/catalog/paginator.py
+index cbffc2b..e40d19d 100644
+--- a/catalog/paginator.py
++++ b/catalog/paginator.py
+@@ -9,6 +9,6 @@ may be empty while items remain.
+ def get_page(items, page, per_page):
+     if page < 1 or per_page < 1:
+         raise ValueError("page and per_page must be >= 1")
+-    start = (page - 1) * per_page + 1
++    start = (page - 1) * per_page
+     end = start + per_page
+     return items[start:end]
+\ No newline at end of file

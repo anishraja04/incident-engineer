@@ -1,0 +1,13 @@
+diff --git a/flags/service.py b/flags/service.py
+index c49b5b4..454f10b 100644
+--- a/flags/service.py
++++ b/flags/service.py
+@@ -13,4 +13,5 @@ def get_flag(name, store):
+ 
+ 
+ def set_flag(name, value, store):
+-    store[name] = value
+\ No newline at end of file
++    store[name] = value
++    _cache.pop(name, None)
+\ No newline at end of file

@@ -123,6 +123,7 @@ class Tools:
         handler = getattr(self, action, None)
         if handler is None:
             return f"ERROR: unknown tool {action!r}. Valid tools: {sorted(t for t in dir(self) if not t.startswith('_') and t != 'execute')}"
+        kwargs = {k: v for k, v in kwargs.items() if v is not None and v != ""}
         try:
             return handler(**kwargs)
         except TypeError as e:

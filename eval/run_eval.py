@@ -62,6 +62,10 @@ def copy_repo(case_dir: Path, workdir: Path) -> Path:
     ws = workdir / case_dir.name
     _force_rmtree(ws)
     shutil.copytree(case_dir / "repo", ws, copy_function=shutil.copy)
+    # give the solver the incident context (report + captured logs)
+    shutil.copy(case_dir / "incident.md", ws / "incident.md")
+    if (case_dir / "logs").exists():
+        shutil.copytree(case_dir / "logs", ws / "logs", dirs_exist_ok=True)
     # init a fresh git repo in the workspace so the verifier can diff
     subprocess.run(["git", "init", "-q"], cwd=ws, capture_output=True)
     subprocess.run(
@@ -76,26 +80,25 @@ def copy_repo(case_dir: Path, workdir: Path) -> Path:
 
 
 def apply_patch(ws: Path, patch_text: str) -> str:
+    from eval.unidiff import apply_unified_diff
+
+    patch_text = patch_text.strip()
+    if not patch_text:
+        return "empty patch"
+    ok, msg = apply_unified_diff(ws, patch_text)
+    if ok:
+        return msg
+    # fall back to git apply for canonical diffs (with headers)
     patch_file = ws / "_baseline.patch"
-    patch_file.write_text(patch_text)
-    proc = subprocess.run(
+    patch_file.write_text(patch_text, encoding="utf-8")
+    for cmd in (
         ["git", "apply", "--whitespace=nowarn", "_baseline.patch"],
-        cwd=ws,
-        capture_output=True,
-        text=True,
-        timeout=60,
-    )
-    if proc.returncode != 0:
-        # try patch -p1 fallback
-        proc2 = subprocess.run(
-            ["git", "apply", "--whitespace=nowarn", "--3way", "_baseline.patch"],
-            cwd=ws,
-            capture_output=True,
-            text=True,
-            timeout=60,
-        )
-        return proc2.stdout + proc2.stderr if proc2.returncode != 0 else "applied (3way)"
-    return "applied"
+        ["git", "apply", "--whitespace=nowarn", "--3way", "_baseline.patch"],
+    ):
+        proc = subprocess.run(cmd, cwd=ws, capture_output=True, text=True, timeout=60)
+        if proc.returncode == 0:
+            return "applied (git apply)"
+    return f"APPLY FAILED ({msg})"
 
 
 def run_case(
@@ -127,21 +130,33 @@ def run_case(
             if p.is_file() and ".git" not in p.parts and "__pycache__" not in p.parts:
                 files[p.relative_to(case_dir / "repo").as_posix()] = p.read_text(errors="replace")
         solver = BaselineSolver()
+        attempts = []
         patch, usage = solver.solve(incident, logs, files)
         usage_tokens["input"] += usage.input_tokens
         usage_tokens["output"] += usage.output_tokens
         usage_tokens["cache"] += usage.cache_read_tokens
+        attempts.append(patch)
+        steps = 1
         apply_patch(ws, patch)
-        traj_file.write_text(
-            json.dumps(
-                {
-                    "role": "assistant",
-                    "content": patch,
-                    "tool": "baseline_single_prompt",
-                }
-            )
-            + "\n"
-        )
+        traj_lines = [
+            json.dumps({"role": "assistant", "content": patch, "tool": "baseline_attempt_1"})
+        ]
+        if "NO FIX NEEDED" not in patch:
+            pre_verify = verify_case(case_dir, ws)
+            if not pre_verify.passed:
+                patch2, usage2 = solver.retry(
+                    incident, logs, files, patch, pre_verify.pytest_output
+                )
+                usage_tokens["input"] += usage2.input_tokens
+                usage_tokens["output"] += usage2.output_tokens
+                usage_tokens["cache"] += usage2.cache_read_tokens
+                attempts.append(patch2)
+                steps = 2
+                apply_patch(ws, patch2)
+                traj_lines.append(
+                    json.dumps({"role": "assistant", "content": patch2, "tool": "baseline_attempt_2"})
+                )
+        traj_file.write_text("\n".join(traj_lines) + "\n")
     else:
         agent = IncidentAgent()
         if mock:
@@ -189,7 +204,11 @@ def main() -> None:
     ap.add_argument("--max-steps", type=int, default=60)
     ap.add_argument("--workdir", default=None)
     ap.add_argument("--mock", action="store_true", help="use scripted mock agent (infra testing only)")
+    ap.add_argument("--model", default=None, help="override LLM model (e.g. gemini-3.1-flash-lite)")
     args = ap.parse_args()
+
+    if args.model:
+        os.environ["LLM_MODEL"] = args.model
 
     cases = resolve_cases(args.cases)
     out_dir = ROOT / (args.out or f"trajectories/runs/{args.solver}_{int(time.time())}")

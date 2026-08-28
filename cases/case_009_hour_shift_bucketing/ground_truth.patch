@@ -1,0 +1,15 @@
+diff --git a/telemetry/bucket.py b/telemetry/bucket.py
+index 15f2e7b..aee4c34 100644
+--- a/telemetry/bucket.py
++++ b/telemetry/bucket.py
+@@ -5,7 +5,4 @@ from datetime import datetime, timezone
+ def hour_of(ts: int) -> int:
+     """Return the UTC hour (0-23) the event falls into."""
+     dt = datetime.fromtimestamp(ts, tz=timezone.utc)
+-    h = dt.hour
+-    # Legacy daylight-saving adjustment inherited from the old analytics
+-    # platform. Reports have always used this shift.
+-    return h + 1 if 9 <= h <= 22 else h
+\ No newline at end of file
++    return dt.hour
+\ No newline at end of file

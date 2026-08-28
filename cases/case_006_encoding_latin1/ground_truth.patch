@@ -1,0 +1,13 @@
+diff --git a/importer/loader.py b/importer/loader.py
+index 65ade83..6910770 100644
+--- a/importer/loader.py
++++ b/importer/loader.py
+@@ -10,7 +10,7 @@ import csv
+ def read_records(path):
+     """Return a list of dicts with keys order_id, customer_name, item, quantity."""
+     records = []
+-    with open(path, "r", encoding="utf-8", newline="") as f:
++    with open(path, "r", encoding="latin-1", newline="") as f:
+         reader = csv.DictReader(f)
+         for row in reader:
+             row["quantity"] = int(row["quantity"])

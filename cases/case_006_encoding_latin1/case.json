@@ -1,0 +1,17 @@
+{
+  "id": "case_006",
+  "slug": "encoding-latin1",
+  "title": "Legacy order importer crashes on accented customer names",
+  "severity": "P1",
+  "service": "importer/loader",
+  "description": "Daily warehouse import fails with UnicodeDecodeError — the mainframe export contains accented names the importer cannot decode.",
+  "tags": ["encoding", "latin-1", "csv"],
+  "challenging": false,
+  "budget_steps": 60,
+  "env": {},
+  "check": {
+    "test_files_immutable": ["tests/"],
+    "must_pass": ["tests/"],
+    "must_not_contain": ["# noqa", "pytest.skip", "except: pass", "UnicodeDecodeError"]
+  }
+}

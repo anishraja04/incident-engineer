@@ -1,0 +1,17 @@
+{
+  "id": "case_007",
+  "slug": "float-precision-tax",
+  "title": "Tax calculator undercharges on half-cent boundaries",
+  "severity": "P1",
+  "service": "tax/calc",
+  "description": "Orders whose tax lands exactly on a half cent are rounded down instead of up — finance loses money on every such order.",
+  "tags": ["floating-point", "rounding", "money"],
+  "challenging": false,
+  "budget_steps": 60,
+  "env": {},
+  "check": {
+    "test_files_immutable": ["tests/"],
+    "must_pass": ["tests/"],
+    "must_not_contain": ["# noqa", "pytest.skip", "except: pass"]
+  }
+}
