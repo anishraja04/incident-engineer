@@ -1,0 +1,17 @@
+{
+  "id": "case_011",
+  "slug": "retry-off-by-one",
+  "title": "Payment retry makes one extra charge attempt beyond the budget",
+  "severity": "P1",
+  "service": "paygw/retry",
+  "description": "The retry wrapper makes max_attempts+1 calls — every card-verification session bills one extra charge attempt.",
+  "tags": ["off-by-one", "retry", "loop-boundary"],
+  "challenging": false,
+  "budget_steps": 60,
+  "env": {},
+  "check": {
+    "test_files_immutable": ["tests/"],
+    "must_pass": ["tests/"],
+    "must_not_contain": ["# noqa", "pytest.skip", "except: pass"]
+  }
+}

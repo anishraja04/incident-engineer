@@ -1,0 +1,19 @@
+diff --git a/paygw/retry.py b/paygw/retry.py
+index 8b13a53..c8955f9 100644
+--- a/paygw/retry.py
++++ b/paygw/retry.py
+@@ -14,10 +14,11 @@ class TransientError(Exception):
+ 
+ def call_with_retry(fn, max_attempts: int = 3):
+     attempts = 0
+-    while attempts <= max_attempts:
++    while attempts < max_attempts:
+         attempts += 1
+         try:
+             return fn()
+         except TransientError:
+-            continue
++            if attempts >= max_attempts:
++                raise
+     raise TransientError("retry budget exhausted")
+\ No newline at end of file

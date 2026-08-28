@@ -1,0 +1,13 @@
+diff --git a/config/loader.py b/config/loader.py
+index 56fc299..46c7cee 100644
+--- a/config/loader.py
++++ b/config/loader.py
+@@ -16,6 +16,6 @@ _DEFAULTS = {
+ 
+ def load_config(service_name: str) -> dict:
+     """Return a service-specific copy of the shared defaults."""
+-    cfg = copy.copy(_DEFAULTS)
++    cfg = copy.deepcopy(_DEFAULTS)
+     cfg["service"] = service_name
+     return cfg
+\ No newline at end of file
