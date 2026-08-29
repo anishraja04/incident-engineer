@@ -24,7 +24,7 @@ only submits when its own test suite passes:
 |---|---|---|
 | Incidents resolved | 0/11 | **11/11** |
 | Human time per task | ~30 min | ~5 min |
-| Cost per task | $0.0052 | $0.0079 |
+| Cost per task | $0.0025 | $0.0079 |
 
 The challenging case (cross-module hour-shift bug) is solved end-to-end
 with the full trajectory recorded. The pipeline is model-agnostic
