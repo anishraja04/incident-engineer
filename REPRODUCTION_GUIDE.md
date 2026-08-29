@@ -30,6 +30,7 @@ copy .env.example .env        # Windows
 | `LLM_API_KEY` | your key | `sk-...` |
 | `LLM_MODEL` | model for the investigator agent | `deepseek-v4-pro` |
 | `LLM_TRIAGE_MODEL` | model for the triage agent (cheap) | `deepseek-chat` |
+| `LLM_BASELINE_MODEL` | model for the manual-process baseline | `deepseek-chat` |
 
 No other setup is required: every case repo is stdlib-only Python.
 
@@ -41,13 +42,13 @@ python eval/run_eval.py --solver agent --cases all --out trajectories/runs/your_
 
 What you get:
 - per-case line: `passed=`, `steps=`, `cost=`, `time=`
-- `trajectories/runs/your_run/summary.json` â€” full results table
-- `trajectories/runs/your_run/trajectories/<case>.jsonl` â€” the complete
+- `trajectories/runs/your_run/summary.json` — full results table
+- `trajectories/runs/your_run/trajectories/<case>.jsonl` — the complete
   agent trajectory for every case (every instruction, tool call, tool
   response, checkpoint and retry)
 
 Expected output (final two-agent configuration, our run): **11/11 passed**,
-total cost â‰ˆ $0.09, total wall time â‰ˆ 9 min, avg ~7 steps per case. The
+total cost ≈ $0.09, total wall time ≈ 9 min, avg ~7 steps per case. The
 pipeline runs two agents: a cheap triage model (hypotheses) + a strong
 investigator (tools, diff-review skill, verification loop).
 
@@ -57,7 +58,7 @@ investigator (tools, diff-review skill, verification loop).
 python eval/run_eval.py --solver baseline --cases all --out trajectories/runs/baseline_run
 ```
 
-Expected output: **0/11 passed**, â‰ˆ $0.03. The baseline receives the
+Expected output: **0/11 passed**, ≈ $0.03. The baseline receives the
 incident report and logs but no repository source (the documented manual
 process), applies the model's diff, and gets one retry with the test
 output.
@@ -95,17 +96,17 @@ python eval/verify.py <case_dir> <workspace_path>
 
 | | Runtime (11 cases) | Cost (11 cases) |
 |---|---|---|
-| Baseline | ~85 s wall | ~$0.03 |
+| Baseline | ~2 min wall | ~$0.03 |
 | Agent | ~9 min wall | ~$0.09 |
 
 Cost is metered from actual token usage with the model's list price;
 `agent/llm.py` holds the price table (edit if prices change). Human time:
-baseline â‰ˆ 30 min/task (manual verification of hallucinated patches),
-agent â‰ˆ 5 min/task (checkpoint + final diff review).
+baseline ≈ 30 min/task (manual verification of hallucinated patches),
+agent ≈ 5 min/task (checkpoint + final diff review).
 
 ## Reproducing the incident construction (optional)
 
-Each case was built as: commit the buggy repo â†’ capture the failing test
-run into `logs/incident.log` â†’ apply the minimal fix â†’ store it as
-`ground_truth.patch` â†’ revert. `scripts/build_case.py` scaffolds the
+Each case was built as: commit the buggy repo → capture the failing test
+run into `logs/incident.log` → apply the minimal fix → store it as
+`ground_truth.patch` → revert. `scripts/build_case.py` scaffolds the
 layout; the harness re-inits git per workspace, so every run is fresh.

@@ -1,113 +1,111 @@
-# Incident Engineer â€” an agentic root-cause debugging workflow
+# Incident Engineer
 
-## Who has this problem
+**A two-agent workflow that debugs production incidents - and only submits
+a fix when its own test suite passes.**
 
-**On-call and platform engineers** who spend 30-90 minutes per incident
-triaging failures: reading logs, tracing symptoms across modules, forming
-hypotheses, fixing, and re-running tests until green. Small teams carry
-this load every day; the median incident is a classic bug hiding behind a
-confusing symptom (a shifted peak, a vanished message, an inflated total).
+---
 
-## What bottleneck makes it worth solving
+## The problem
 
-Incident response today is a **chat-and-hope loop**:
+When an incident hits, an on-call engineer spends **30-90 minutes
+triaging**: reading logs, tracing symptoms across modules, forming
+hypotheses, fixing, re-running tests.
 
-1. An engineer pastes the incident and logs into an LLM. It returns
-   *convincing* code â€” often with the correct diagnosis, and often a diff
-   that does not apply, or fixes the symptom while missing the boundary.
-2. The engineer hand-verifies every claim: reads the patch, checks the
-   call sites, re-runs the tests, iterates by hand.
-3. Nothing in the loop can *verify*: the model never sees its own test
-   run, never keeps a hypothesis ledger, and never checks whether the
-   tests it was told about still pass after its edit.
+The common shortcut - pasting logs into an LLM and hoping the fix applies -
+does not work:
 
-In our evaluation this manual process resolved **0 of 11 incidents**,
-while the diagnosis itself was frequently correct â€” a perfect illustration
-of the gap between convincing and correct. The value of solving it is
-measured in engineer-hours per week, in faster time-to-green after a
-deploy, and in trust: a fix that was verified by a test suite before a
-human ever sees it.
+| | What happens |
+|---|---|
+| The diagnosis | Often correct |
+| The patch | Often does not apply, or fixes the symptom but breaks a boundary |
+| The verification | No one runs the tests before the fix ships |
 
-## What the agent solution does
+In our evaluation, this manual process resolved **0 of 11 incidents** -
+even though the model frequently identified the right bug. *Convincing code
+is not the same as correct code.*
 
-Two agents orchestrate (memory carried from one to the other):
+## The solution
+
+Two agents orchestrate, with memory carried from one to the other:
 
 ```
-INCIDENT â”€â”€â–¶ 1. TRIAGE  (cheap model)   read incident + logs + file inventory
-              â”‚                          -> ranked hypotheses + plan (JSON)
-              â–¼
-             2. INVESTIGATE (strong model)  tools: list/read/grep/run-tests/
-              â”‚                             controlled python; evidence ledger
-              â”‚                             (rejected hypotheses stay visible)
-             3. FIX        minimal patch via file tools
-             4. REVIEW     static diff gate (tests/ untouched, no forbidden
-              â”‚            patterns)  ->  "diff-review skill"
-             5. VERIFY     run the full test suite; on failure, revise
-                           (max 3 fix attempts, human checkpoint)
-        â”€â”€â–¶ RESOLVED: only submitted when the suite passes
+INCIDENT
+   |
+   v
+1. TRIAGE (cheap model)      read incident + logs + file inventory
+   |                         -> ranked root-cause hypotheses (JSON)
+   v
+2. INVESTIGATE (strong model) tools: list / read / grep / run-tests /
+   |                          controlled Python; evidence ledger
+   |                          (rejected hypotheses stay visible)
+   v
+3. FIX                       minimal patch via file tools
+   |
+4. REVIEW                    static diff gate: no test files touched,
+   |                          no forbidden patterns ("diff-review skill")
+   v
+5. VERIFY                    run the full test suite; on failure, revise
+                             (max 3 fix attempts, human checkpoint)
+   |
+   v
+RESOLVED - submitted only when the suite passes
 ```
 
-Design choices, each tied to a measured change (see
-[IMPROVEMENT_CHANGELOG.md](IMPROVEMENT_CHANGELOG.md)):
+Every design choice is tied to a measured change - see the
+[Improvement Changelog](IMPROVEMENT_CHANGELOG.md).
 
-- **Two-agent orchestration** â€” a cheap triage model forms hypotheses;
-  a strong investigator verifies them with tools. Different models, one
-  pipeline, memory carried between them.
-- **Tools, not prompts** â€” file listing, targeted reads, grep, test
-  runner, controlled Python execution. The agent reads only what it needs.
-- **Verification loop** â€” the agent may only submit when `pytest` passes;
-  failed attempts feed back into the next hypothesis.
-- **Diff-review skill** â€” a static gate that rejects edits touching
-  tests/ or containing forbidden patterns *before* the test run.
-- **Memory / evidence ledger** â€” bounded context compaction keeps every
-  hypothesis (including rejected ones) visible without unbounded token
-  growth.
-- **Model-agnostic** â€” same code runs on DeepSeek v4 and Gemini 3.1
-  flash-lite with identical results on the sampled cases.
-- **Human checkpoint** â€” the operator is asked for a status summary at
-  fixed intervals; edits happen only inside an isolated workspace.
+## Results
 
-## What makes this different from off-the-shelf AI debugging tools
-
-| | Off-the-shelf (Copilot, Datadog AI...) | This solution |
-|---|---|---|
-| Verification | suggests fixes, rarely runs your tests | submits **only** when its own test suite passes |
-| Evaluation | cherry-picked demos | 11 incidents, deterministic verifier, same cases for baseline and agent, full trajectories |
-| Memory | â€” | bounded hypothesis ledger, visible in trajectories |
-| Orchestration | â€” | two agents, two models, one pipeline |
-| Human-in-loop | â€” | checkpoint protocol at fixed intervals |
-
-## Results (11 incidents, same verifier, same cases)
+**11 realistic incidents, same cases, same verifier, two independent runs.**
 
 | Metric | Simple baseline | Agent solution |
 |---|---|---|
 | Incidents resolved | 0/11 (0%) | **11/11 (100%)** |
 | Human time per task | ~30 min | ~5 min |
 | Cost per task | $0.0025 | $0.0079 |
-| Steps per task | 2 | ~7 avg |
+| Steps per task | 2 | ~7 |
 
-Full evidence: `eval/results/`, `trajectories/submitted/`, and the changelog.
+- The **challenging case** (cross-module hour-shift bug) is solved
+  end-to-end, with the full trajectory recorded.
+- **Model-agnostic**: verified on DeepSeek v4 and Gemini 3.1 flash-lite.
+- **Reproducible**: one command runs the whole evaluation from a clean
+  environment (~9 minutes, ~$0.09).
+
+Evidence: `eval/results/`, `trajectories/submitted/`.
+
+## Quick start
+
+```bash
+git clone <repo-url> incident-engineer
+cd incident-engineer
+python -m venv .venv && source .venv/bin/activate   # Windows: .venv\Scripts\activate
+pip install -r requirements.txt
+cp .env.example .env                                 # add your LLM API key
+./run_all.sh                                         # solution + baseline + eval
+```
+
+Full walkthrough in the [Reproduction Guide](REPRODUCTION_GUIDE.md).
 
 ## Repository layout
 
 ```
-agent/           the IncidentAgent (llm client, tools, orchestration)
+agent/           the two-agent pipeline (triage + investigator, tools, memory)
 baseline/        the manual-process baseline (single prompt, no tools)
-cases/           11 self-contained incident cases (buggy repo + logs +
-                 incident report + ground-truth patch)
-eval/            harness (run_eval.py), verifier (verify.py), unidiff
-trajectories/    every run logged as JSONL (submission evidence)
+cases/           11 self-contained incidents (buggy repo, logs, report, patch)
+eval/            harness + verifier (deterministic, same cases both sides)
+trajectories/    complete JSONL logs of every agent run (submission evidence)
 ```
-
-## Reproducing
-
-See [REPRODUCTION_GUIDE.md](REPRODUCTION_GUIDE.md) for the clean
-environment walkthrough and exact commands for the solution, the baseline
-and the evaluation.
 
 ## Main failure mode & hot take
 
-The dominant failure mode was **confident hallucination** â€” plausible
-patches that referenced source the model had never seen. The lesson: see
-the changelog's closing section. Verification is not a nice-to-have; it is
-what turns an agent into an engineer.
+The dominant failure mode was **confident hallucination** - plausible
+patches referencing source the model had never seen.
+
+**Hot take:** verification is the difference between convincing and
+correct. An agent that cannot run its own work is just a confident
+guesser. Add a cheap, fast, ruthless verifier first - every other
+improvement is measured against it.
+
+---
+
+*Submitted to the micro1 Frontier Engineering Challenge 2026.*
