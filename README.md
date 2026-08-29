@@ -56,7 +56,7 @@ Every design choice is tied to a measured change - see the
 
 ## Results
 
-**11 realistic incidents, same cases, same verifier, two independent runs.**
+**11 realistic incidents, same cases, same verifier.**
 
 | Metric | Simple baseline | Agent solution |
 |---|---|---|
